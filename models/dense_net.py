@@ -46,7 +46,7 @@ class DenseNet:
         """
         self.data_provider = data_provider
         self.data_shape = data_provider.data_shape
-        self.n_classes = data_provider.n_classes
+        self.n_classes = data_provider._n_classes
         self.depth = depth
         self.growth_rate = growth_rate
         # how many features will be received after first convolution
@@ -379,6 +379,8 @@ class DenseNet:
             print("Training...")
             loss, acc = self.train_one_epoch(
                 self.data_provider.train, batch_size, learning_rate)
+            tf.summary.scalar("Training loss", loss)
+            tf.summary.scalar("Training accuracy", acc)
             if self.should_save_logs:
                 self.log_loss_accuracy(loss, acc, epoch, prefix='train')
 
@@ -386,10 +388,13 @@ class DenseNet:
                 print("Validation...")
                 loss, acc = self.test(
                     self.data_provider.validation, batch_size)
+                tf.summary.scalar("Validation loss", loss)
+                tf.summary.scalar("Validation accuracy", acc)
                 if self.should_save_logs:
                     self.log_loss_accuracy(loss, acc, epoch, prefix='valid')
 
             time_per_epoch = time.time() - start_time
+            tf.summary.scalar("time_per_epoch", time_per_epoch)
             seconds_left = int((n_epochs - epoch) * time_per_epoch)
             print("Time per epoch: %s, Est. complete in: %s" % (
                 str(timedelta(seconds=time_per_epoch)),
@@ -406,12 +411,18 @@ class DenseNet:
         num_examples = data.num_examples
         total_loss = []
         total_accuracy = []
+        #使用shuffle_batch可以随机打乱输入
+        img_batch, label_batch = tf.train.shuffle_batch([data.images, data.labels],
+                                                batch_size=batch_size, 
+                                                capacity=100+3*batch_size,
+                                                min_after_dequeue=100)
+
         for i in range(num_examples // batch_size):
-            batch = data.next_batch(batch_size)
-            images, labels = batch
+            # batch = data.next_batch(batch_size)
+            # images, labels = batch
             feed_dict = {
-                self.images: images,
-                self.labels: labels,
+                self.images: img_batch,
+                self.labels: label_batch,
                 self.learning_rate: learning_rate,
                 self.is_training: True,
             }
@@ -433,11 +444,15 @@ class DenseNet:
         num_examples = data.num_examples
         total_loss = []
         total_accuracy = []
+        img_batch, label_batch = tf.train.shuffle_batch([data.images, data.labels],
+                                                batch_size=batch_size, 
+                                                capacity=100+3*batch_size,
+                                                min_after_dequeue=100)
         for i in range(num_examples // batch_size):
-            batch = data.next_batch(batch_size)
+            # batch = data.next_batch(batch_size)
             feed_dict = {
-                self.images: batch[0],
-                self.labels: batch[1],
+                self.images: img_batch,
+                self.labels: label_batch,
                 self.is_training: False,
             }
             fetches = [self.cross_entropy, self.accuracy]

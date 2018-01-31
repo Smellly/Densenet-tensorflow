@@ -27,12 +27,25 @@ train_params_svhn = {
     'normalization': 'divide_255',
 }
 
+train_params_livenss = {
+    'batch_size': 64,
+    'n_epochs': 300,
+    'initial_learning_rate': 0.2,
+    'reduce_lr_epoch_1': 150,  # epochs * 0.5
+    'reduce_lr_epoch_2': 225,  # epochs * 0.75
+    'validation_set': None,
+    'validation_split': None,  # None or float
+    'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
+    'normalization': None,  # None, divide_256, divide_255, by_chanels
+}
 
 def get_train_params_by_name(name):
     if name in ['C10', 'C10+', 'C100', 'C100+']:
         return train_params_cifar
     if name == 'SVHN':
         return train_params_svhn
+    if name == 'Liveness':
+        return train_params_livenss
 
 
 if __name__ == '__main__':
@@ -60,7 +73,7 @@ if __name__ == '__main__':
         help='Depth of whole network, restricted to paper choices')
     parser.add_argument(
         '--dataset', '-ds', type=str,
-        choices=['C10', 'C10+', 'C100', 'C100+', 'SVHN'],
+        choices=['C10', 'C10+', 'C100', 'C100+', 'SVHN', 'Liveness'],
         default='C10',
         help='What dataset should be used')
     parser.add_argument(

@@ -71,7 +71,7 @@ class CifarDataSet(ImagesDataSet):
 
         self.images = images
         self.labels = labels
-        self.n_classes = n_classes
+        self._n_classes = n_classes
         self.augmentation = augmentation
         self.normalization = normalization
         self.images = self.normalize_images(images, self.normalization)
