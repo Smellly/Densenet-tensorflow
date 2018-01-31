@@ -44,7 +44,7 @@ def augment_all_images(initial_images, pad):
 
 
 class LivenessDataSet(ImagesDataSet):
-    def __init__(self, images, labels, shuffle, normalization, 
+    def __init__(self, images, labels, shuffle, normalization, num_examples
                 n_classes=2,
                 augmentation=False):
         """
@@ -77,10 +77,11 @@ class LivenessDataSet(ImagesDataSet):
         self.images = images
         self.labels = labels
         self.n_classes = n_classes
+        self._num_examples = num_examples
         self.augmentation = augmentation
         self.normalization = normalization
         # self.images = self.normalize_images(images, self.normalization)
-        self.start_new_epoch()
+        # self.start_new_epoch()
 
     def start_new_epoch(self):
         self._batch_counter = 0
@@ -96,7 +97,7 @@ class LivenessDataSet(ImagesDataSet):
 
     @property
     def num_examples(self):
-        return self.labels.shape[0]
+        return self._num_examples
 
     def next_batch(self, batch_size):
         start = self._batch_counter * batch_size
@@ -114,8 +115,9 @@ class LivenessDataSet(ImagesDataSet):
 class LivenessDataProvider(DataProvider):
     """Abstract class for cifar readers"""
 
-    def __init__(self, save_path=None, validation_set=None,
-                 validation_split=None, shuffle=None, normalization=None,
+    def __init__(self, save_path=None,
+                 shuffle=None, normalization=None,
+                 train_save_path=None, val_save_path=None, test_save_path=None,
                  one_hot=True, **kwargs):
         """
         Args:
@@ -135,89 +137,80 @@ class LivenessDataProvider(DataProvider):
                 divide_256: divide all pixels by 256
                 by_chanels: substract mean of every chanel and divide each
                     chanel data by it's standart deviation
+            save_path: /path/to/filelist.txt
+                e.g. in train_save_path.txt
+                    .../.../.../a.jpg 1
+                    .../.../.../b.jpg 2
             one_hot: `bool`, return lasels one hot encoded
         """
-        self._save_path = save_path
+        self._train_save_path = train_save_path
+        self._val_save_path = val_save_path
+        self._test_save_path = test_save_path
         self.one_hot = one_hot
         self._n_classes = 2
-        train_fnames, test_fnames = self.get_filenames(self.save_path)
 
         # add train and validations datasets
-        trainTFRecords = Path("train.tfrecords")
+        trainTFRecords = Path("data_providers/LivenessTFRecordData/train.tfrecords")
         if not trainTFRecords.is_file():
-            self.ToTFRecords(train_fnames, "train")
+            self.ToTFRecords("train")
         images, labels = self.FromTFRecords(trainTFRecords)
 
-        if validation_set is not None and validation_split is not None:
-            split_idx = int(images.shape[0] * (1 - validation_split))
-            self.train = LivensessDataSet(
-                images=images[:split_idx], labels=labels[:split_idx],
-                n_classes=self.n_classes, shuffle=shuffle,
-                normalization=normalization,
-                augmentation=self.data_augmentation)
-            self.validation = LivensessDataSet(
-                images=images[split_idx:], labels=labels[split_idx:],
-                n_classes=self.n_classes, shuffle=shuffle,
-                normalization=normalization,
-                augmentation=self.data_augmentation)
-        else:
-            self.train = LivensessDataSet(
-                images=images, labels=labels,
-                n_classes=self.n_classes, shuffle=shuffle,
-                normalization=normalization,
-                augmentation=self.data_augmentation)
+        self.train = LivensessDataSet(
+            images=images, labels=labels
+            n_classes=self.n_classes, shuffle=shuffle,
+            normalization=normalization)
 
         # add test set
-        testTFRecords = Path("test.tfrecords")
+        testTFRecords = Path("data_providers/LivenessTFRecordData/test.tfrecords")
         if not testTFRecords.is_file():
-            self.ToTFRecords(test_fnames, "test")
+            self.ToTFRecords("test")
         images, labels = self.FromTFRecords(testTFRecords)
 
-        self.test = LivensessDataSet(
+        self.test = LivenessDataSet(
             images=images, labels=labels,
             shuffle=None, n_classes=self.n_classes,
-            normalization=normalization,
-            augmentation=False)
+            num_examples, self.test_num,
+            normalization=normalization)
 
-        if validation_set and not validation_split:
+        # add val set
+        if self._val_save_path is not None :
+            trainTFRecords = Path("data_providers/LivenessTFRecordData/val.tfrecords")
+            if not trainTFRecords.is_file():
+                self.ToTFRecords("val")
+            images, labels = self.FromTFRecords(trainTFRecords)
+            self.validation = LivensessDataSet(
+                images=images, labels=labels,
+                n_classes=self.n_classes, shuffle=shuffle,
+                normalization=normalization)
+        else
             self.validation = self.test
 
     @property
-    def save_path(self):
-        if self._save_path is None:
-            self._save_path = \
-                Path("/data/users/jensenjwang/work/ssd/caffe/data/liveness_scale4")
-        return self._save_path
-
-    @property
-    def data_url(self):
-        """Return url for downloaded data depends on cifar class"""
-        data_url = ('http://www.cs.toronto.edu/'
-                    '~kriz/cifar-%d-python.tar.gz' % self.n_classes)
-        return data_url
-
-    @property
     def data_shape(self):
-        return (32, 32, 3)
+        return (256,256, 3)
 
     @property
     def n_classes(self):
         return self._n_classes
 
-    def get_filenames(self, save_path):
-        """Return two lists of train and test filenames for dataset"""
-        with Path(save_path / 'train82v203.txt').open()  as f:
-            trainlist = f.readlines()
-        with Path(save_path / 'val82v203.txt').open()  as f:
-            vallist = f.readlines()
-
-        return trainlist, vallist
-
     # from imglist to tfrecords
     # filetype : train, val, test
-    def ToTFRecords(self, filenames, filetype):
+    def ToTFRecords(self, filetype):
+        if filetype == "train":
+            savepath = self._train_save_path
+        elif filetype == "val":
+            savepath = self._val_save_path
+        elif filetype == "test":
+            savepath == self._test_save_path
+        else:
+            print("Wrong with filetype: train, val, test")
+            exit(0)
+        with savepath.open() as f:
+            filenames = f.readlines()
+            self._num_examples = len(filenames)
+
         print("Saving dataset %s to TFRecords"%filetype)
-        folder = Path("LivenessTFRecordData") 
+        folder = Path("data_providers/LivenessTFRecordData") 
         if not folder.exists():
             folder.mkdir()
         writer = tf.python_io.TFRecordWriter(str(folder / (filetype +
@@ -258,9 +251,9 @@ class LivenessDataProvider(DataProvider):
         # return images_res, labels_res
 
     # read and decode from tfrecords
-    def FromTFRecords(self, filenames):
+    def FromTFRecords(self, filename):
         #根据文件名生成一个队列
-        filename_queue = tf.train.string_input_producer([filename])
+        filename_queue = tf.train.string_input_producer([str(filename)])
         reader = tf.TFRecordReader()
         _, serialized_example = reader.read(filename_queue)   #返回文件名和文件
         features = tf.parse_single_example(serialized_example,
