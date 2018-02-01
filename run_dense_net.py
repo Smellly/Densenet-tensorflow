@@ -27,7 +27,7 @@ train_params_svhn = {
     'normalization': 'divide_255',
 }
 
-train_params_livenss = {
+train_params_liveness = {
     'batch_size': 64,
     'n_epochs': 300,
     'initial_learning_rate': 0.2,
@@ -37,15 +37,21 @@ train_params_livenss = {
     'validation_split': None,  # None or float
     'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
     'normalization': None,  # None, divide_256, divide_255, by_chanels
+    'train_save_path': None, # None or str
+    'test_save_path' : None, # None or str
+    'val_save_path' : None # None or str
 }
 
-def get_train_params_by_name(name):
+def get_train_params_by_name(name, args):
     if name in ['C10', 'C10+', 'C100', 'C100+']:
         return train_params_cifar
     if name == 'SVHN':
         return train_params_svhn
     if name == 'Liveness':
-        return train_params_livenss
+        train_params_liveness['train_save_path']=args.traindatalist
+        train_params_liveness['val_save_path']=args.valdatalist
+        train_params_liveness['test_save_path']=args.testdatalist
+        return train_params_liveness
 
 
 if __name__ == '__main__':
@@ -76,6 +82,15 @@ if __name__ == '__main__':
         choices=['C10', 'C10+', 'C100', 'C100+', 'SVHN', 'Liveness'],
         default='C10',
         help='What dataset should be used')
+    parser.add_argument(
+        '--traindatalist', type=str, default=None,
+        help='What train dataset datalist should be used')
+    parser.add_argument(
+        '--valdatalist', type=str, default=None,
+        help='What val dataset datalist should be used')
+    parser.add_argument(
+        '--testdatalist', type=str, default=None,
+        help='What test dataset datalist should be used')
     parser.add_argument(
         '--total_blocks', '-tb', type=int, default=3, metavar='',
         help='Total blocks of layers stack (default: %(default)s)')
@@ -136,7 +151,7 @@ if __name__ == '__main__':
         exit()
 
     # some default params dataset/architecture related
-    train_params = get_train_params_by_name(args.dataset)
+    train_params = get_train_params_by_name(args.dataset, args)
     print("Params:")
     for k, v in model_params.items():
         print("\t%s: %s" % (k, v))

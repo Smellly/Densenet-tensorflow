@@ -6,3 +6,4 @@ saves/
 logs/
 LivenessTFRecordData
 TODO
+*.sh

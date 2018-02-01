@@ -44,7 +44,7 @@ def augment_all_images(initial_images, pad):
 
 
 class LivenessDataSet(ImagesDataSet):
-    def __init__(self, images, labels, shuffle, normalization, num_examples
+    def __init__(self, images, labels, shuffle, normalization, num_examples,
                 n_classes=2,
                 augmentation=False):
         """
@@ -115,13 +115,12 @@ class LivenessDataSet(ImagesDataSet):
 class LivenessDataProvider(DataProvider):
     """Abstract class for cifar readers"""
 
-    def __init__(self, save_path=None,
+    def __init__(self, 
                  shuffle=None, normalization=None,
                  train_save_path=None, val_save_path=None, test_save_path=None,
                  one_hot=True, **kwargs):
         """
         Args:
-            save_path: `str`
             validation_set: `bool`.
             validation_split: `float` or None
                 float: chunk of `train set` will be marked as `validation set`.
@@ -137,27 +136,40 @@ class LivenessDataProvider(DataProvider):
                 divide_256: divide all pixels by 256
                 by_chanels: substract mean of every chanel and divide each
                     chanel data by it's standart deviation
-            save_path: /path/to/filelist.txt
+            save_path: `str` or None
+                /path/to/filelist.txt
                 e.g. in train_save_path.txt
                     .../.../.../a.jpg 1
                     .../.../.../b.jpg 2
             one_hot: `bool`, return lasels one hot encoded
         """
-        self._train_save_path = train_save_path
-        self._val_save_path = val_save_path
-        self._test_save_path = test_save_path
+        assert train_save_path, "train datalist is none"
+        assert test_save_path, "test datalist is none"
+
+        print(kwargs)
+        self._train_save_path = Path(train_save_path) 
+        self._val_save_path = Path(val_save_path) \
+                    if val_save_path is not None else None
+        self._test_save_path = Path(test_save_path) \
+                    if test_save_path is not None else None
         self.one_hot = one_hot
         self._n_classes = 2
 
         # add train and validations datasets
         trainTFRecords = Path("data_providers/LivenessTFRecordData/train.tfrecords")
+
         if not trainTFRecords.is_file():
             self.ToTFRecords("train")
+        else:
+            self._num_examples = sum(1 for _ in
+                    tf.python_io.tf_record_iterator(trainTFRecords))
         images, labels = self.FromTFRecords(trainTFRecords)
 
-        self.train = LivensessDataSet(
-            images=images, labels=labels
+
+        self.train = LivenessDataSet(
+            images=images, labels=labels,
             n_classes=self.n_classes, shuffle=shuffle,
+            num_examples=self._num_examples,
             normalization=normalization)
 
         # add test set
@@ -169,7 +181,7 @@ class LivenessDataProvider(DataProvider):
         self.test = LivenessDataSet(
             images=images, labels=labels,
             shuffle=None, n_classes=self.n_classes,
-            num_examples, self.test_num,
+            num_examples=self._num_examples,
             normalization=normalization)
 
         # add val set
@@ -178,11 +190,12 @@ class LivenessDataProvider(DataProvider):
             if not trainTFRecords.is_file():
                 self.ToTFRecords("val")
             images, labels = self.FromTFRecords(trainTFRecords)
-            self.validation = LivensessDataSet(
+            self.validation = LivenessDataSet(
                 images=images, labels=labels,
+                num_examples=self._num_examples,
                 n_classes=self.n_classes, shuffle=shuffle,
                 normalization=normalization)
-        else
+        else:
             self.validation = self.test
 
     @property

@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+'''
+// Author: Jay Shen.
+// Last modify: 2018-02-01 16:47:34.
+// File name: dense_net.py
+//
+// Description:
+'''
 import os
 import time
 import shutil
