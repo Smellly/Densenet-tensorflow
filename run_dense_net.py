@@ -28,7 +28,7 @@ train_params_svhn = {
 }
 
 train_params_liveness = {
-    'batch_size': 64,
+    'batch_size': 256,
     'n_epochs': 300,
     'initial_learning_rate': 0.2,
     'reduce_lr_epoch_1': 150,  # epochs * 0.5

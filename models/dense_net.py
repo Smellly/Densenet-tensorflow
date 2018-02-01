@@ -105,6 +105,7 @@ class DenseNet:
         else:
             self.sess.run(tf.global_variables_initializer())
             logswriter = tf.summary.FileWriter
+        self.threads = tf.train.start_queue_runners(sess=self.sess)
         self.saver = tf.train.Saver()
         self.summary_writer = logswriter(self.logs_path)
 
@@ -428,12 +429,15 @@ class DenseNet:
         for i in range(num_examples // batch_size):
             # batch = data.next_batch(batch_size)
             # images, labels = batch
+            # without sess.run() will cause a error called
+            # "The value of a feed cannot be a tf.Tensor object. "
             feed_dict = {
-                self.images: img_batch,
-                self.labels: label_batch,
+                self.images: self.sess.run(img_batch), 
+                self.labels: self.sess.run(label_batch),
                 self.learning_rate: learning_rate,
                 self.is_training: True,
             }
+            print('labels :',  self.sess.run(label_batch))
             fetches = [self.train_step, self.cross_entropy, self.accuracy]
             result = self.sess.run(fetches, feed_dict=feed_dict)
             _, loss, accuracy = result
@@ -459,8 +463,8 @@ class DenseNet:
         for i in range(num_examples // batch_size):
             # batch = data.next_batch(batch_size)
             feed_dict = {
-                self.images: img_batch,
-                self.labels: label_batch,
+                self.images: self.sess.run(img_batch),
+                self.labels: self.sess.run(label_batch),
                 self.is_training: False,
             }
             fetches = [self.cross_entropy, self.accuracy]

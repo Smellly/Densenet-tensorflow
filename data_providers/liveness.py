@@ -146,12 +146,10 @@ class LivenessDataProvider(DataProvider):
         assert train_save_path, "train datalist is none"
         assert test_save_path, "test datalist is none"
 
-        print(kwargs)
         self._train_save_path = Path(train_save_path) 
+        self._test_save_path = Path(test_save_path) 
         self._val_save_path = Path(val_save_path) \
                     if val_save_path is not None else None
-        self._test_save_path = Path(test_save_path) \
-                    if test_save_path is not None else None
         self.one_hot = one_hot
         self._n_classes = 2
 
@@ -162,7 +160,7 @@ class LivenessDataProvider(DataProvider):
             self.ToTFRecords("train")
         else:
             self._num_examples = sum(1 for _ in
-                    tf.python_io.tf_record_iterator(trainTFRecords))
+                    tf.python_io.tf_record_iterator(str(trainTFRecords)))
         images, labels = self.FromTFRecords(trainTFRecords)
 
 
@@ -181,18 +179,20 @@ class LivenessDataProvider(DataProvider):
         self.test = LivenessDataSet(
             images=images, labels=labels,
             shuffle=None, n_classes=self.n_classes,
-            num_examples=self._num_examples,
+            num_examples=sum(1 for _ in
+                tf.python_io.tf_record_iterator(str(testTFRecords))),
             normalization=normalization)
 
         # add val set
         if self._val_save_path is not None :
-            trainTFRecords = Path("data_providers/LivenessTFRecordData/val.tfrecords")
-            if not trainTFRecords.is_file():
+            valTFRecords = Path("data_providers/LivenessTFRecordData/val.tfrecords")
+            if not valTFRecords.is_file():
                 self.ToTFRecords("val")
-            images, labels = self.FromTFRecords(trainTFRecords)
+            images, labels = self.FromTFRecords(valTFRecords)
             self.validation = LivenessDataSet(
                 images=images, labels=labels,
-                num_examples=self._num_examples,
+                num_examples=sum(1 for _ in 
+                    tf.python_io.tf_record_iterator(str(valTFRecords))),
                 n_classes=self.n_classes, shuffle=shuffle,
                 normalization=normalization)
         else:
@@ -214,7 +214,7 @@ class LivenessDataProvider(DataProvider):
         elif filetype == "val":
             savepath = self._val_save_path
         elif filetype == "test":
-            savepath == self._test_save_path
+            savepath = self._test_save_path
         else:
             print("Wrong with filetype: train, val, test")
             exit(0)
