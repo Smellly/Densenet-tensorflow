@@ -99,13 +99,15 @@ class DenseNet:
         config.gpu_options.allow_growth = True
         self.sess = tf.Session(config=config)
         tf_ver = int(tf.__version__.split('.')[1])
+        init_op = tf.group(tf.global_variables_initializer(),
+                   tf.local_variables_initializer())
         if TF_VERSION <= 0.10:
             self.sess.run(tf.initialize_all_variables())
             logswriter = tf.train.SummaryWriter
         else:
-            self.sess.run(tf.global_variables_initializer())
+            # self.sess.run(tf.global_variables_initializer())
+            self.sess.run(init_op)
             logswriter = tf.summary.FileWriter
-        self.threads = tf.train.start_queue_runners(sess=self.sess)
         self.saver = tf.train.Saver()
         self.summary_writer = logswriter(self.logs_path)
 
@@ -425,7 +427,10 @@ class DenseNet:
                                                 batch_size=batch_size, 
                                                 capacity=100+3*batch_size,
                                                 min_after_dequeue=100)
-
+        label_batch = tf.reshape(label_batch, (batch_size, self.n_classes))
+        self.coord = tf.train.Coordinator()  
+        threads = tf.train.start_queue_runners(sess=self.sess,
+                                                    coord=self.coord)
         for i in range(num_examples // batch_size):
             # batch = data.next_batch(batch_size)
             # images, labels = batch
@@ -437,7 +442,6 @@ class DenseNet:
                 self.learning_rate: learning_rate,
                 self.is_training: True,
             }
-            print('labels :',  self.sess.run(label_batch))
             fetches = [self.train_step, self.cross_entropy, self.accuracy]
             result = self.sess.run(fetches, feed_dict=feed_dict)
             _, loss, accuracy = result
@@ -456,10 +460,14 @@ class DenseNet:
         num_examples = data.num_examples
         total_loss = []
         total_accuracy = []
+        self.coord = tf.train.Coordinator()  
+        self.threads = tf.train.start_queue_runners(sess=self.sess,
+                coord=self.coord)
         img_batch, label_batch = tf.train.shuffle_batch([data.images, data.labels],
                                                 batch_size=batch_size, 
                                                 capacity=100+3*batch_size,
                                                 min_after_dequeue=100)
+        label_batch = tf.reshape(label_batch, (batch_size, self._n_classes))
         for i in range(num_examples // batch_size):
             # batch = data.next_batch(batch_size)
             feed_dict = {

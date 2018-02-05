@@ -28,11 +28,11 @@ train_params_svhn = {
 }
 
 train_params_liveness = {
-    'batch_size': 256,
-    'n_epochs': 300,
+    'batch_size': 8,
+    'n_epochs': 100,
     'initial_learning_rate': 0.2,
-    'reduce_lr_epoch_1': 150,  # epochs * 0.5
-    'reduce_lr_epoch_2': 225,  # epochs * 0.75
+    'reduce_lr_epoch_1': 2,  
+    'reduce_lr_epoch_2': 10,  
     'validation_set': None,
     'validation_split': None,  # None or float
     'shuffle': 'every_epoch',  # None, once_prior_train, every_epoch
@@ -130,6 +130,7 @@ if __name__ == '__main__':
         '--not-renew-logs', dest='renew_logs', action='store_false',
         help='Do not erase previous logs for model if exists.')
     parser.set_defaults(renew_logs=True)
+
 
     args = parser.parse_args()
 

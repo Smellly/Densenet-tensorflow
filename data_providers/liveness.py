@@ -153,6 +153,7 @@ class LivenessDataProvider(DataProvider):
         self.one_hot = one_hot
         self._n_classes = 2
 
+
         # add train and validations datasets
         trainTFRecords = Path("data_providers/LivenessTFRecordData/train.tfrecords")
 
@@ -161,6 +162,7 @@ class LivenessDataProvider(DataProvider):
         else:
             self._num_examples = sum(1 for _ in
                     tf.python_io.tf_record_iterator(str(trainTFRecords)))
+
         images, labels = self.FromTFRecords(trainTFRecords)
 
 
@@ -247,22 +249,6 @@ class LivenessDataProvider(DataProvider):
             writer.write(example.SerializeToString())  #序列化为字符串
         writer.close()
         
-        # images_res = []
-        # labels_res = []
-        # for fname in filenames:
-        #     with open(fname, 'rb') as f:
-        #         images_and_labels = pickle.load(f, encoding='bytes')
-        #     images = images_and_labels[b'data']
-        #     images = images.reshape(-1, 3, 32, 32)
-        #     images = images.swapaxes(1, 3).swapaxes(1, 2)
-        #     images_res.append(images)
-        #     labels_res.append(images_and_labels[labels_key])
-        # images_res = np.vstack(images_res)
-        # labels_res = np.hstack(labels_res)
-        # if self.one_hot:
-        #     labels_res = self.labels_to_one_hot(labels_res)
-        # return images_res, labels_res
-
     # read and decode from tfrecords
     def FromTFRecords(self, filename):
         #根据文件名生成一个队列
@@ -278,11 +264,9 @@ class LivenessDataProvider(DataProvider):
         img = tf.decode_raw(features['img_raw'], tf.uint8)
         img = tf.reshape(img, [256, 256, 3])
         img = tf.cast(img, tf.float32) * (1. / 255) - 0.5
-        label = tf.cast(features['label'], tf.int32)
+        t_label = tf.cast(features['label'], tf.int32)
+        label = tf.one_hot(t_label, self.n_classes)
 
         return img, label        
-
-
-
 
 
